@@ -93,3 +93,23 @@ public class AdminServlet extends HttpServlet {
 
         response.sendRedirect("admin?success=Room deleted successfully.");
     }
+
+    // View all reservations (Admin Panel)
+    private void viewReservations(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        ReservationService reservationService = new ReservationService();
+        List<Reservation> reservations = reservationService.getAllReservations();
+        request.setAttribute("reservations", reservations);
+
+        request.getRequestDispatcher("/WEB-INF/views/admin/all-reservations.jsp").forward(request, response);
+    }
+
+    // Generate Reports (e.g., Revenue, Reservations, etc.)
+    private void generateReport(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        ReportService reportService = new ReportService();
+        String reportType = request.getParameter("reportType");
+        String reportData = reportService.generateReport(reportType);
+
+        request.setAttribute("reportData", reportData);
+        request.getRequestDispatcher("/WEB-INF/views/admin/reports.jsp").forward(request, response);
+    }
+}
