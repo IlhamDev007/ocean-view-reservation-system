@@ -8,6 +8,22 @@
   <name>OceanView_Reservation_System Maven Webapp</name>
   <url>http://maven.apache.org</url>
   <dependencies>
+    <!-- ✅ Servlet API (required for compilation, provided by Tomcat at runtime) -->
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>4.0.1</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- ✅ MySQL Connector -->
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.33</version>
+    </dependency>
+
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
@@ -15,6 +31,7 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
   <build>
     <finalName>OceanView_Reservation_System</finalName>
   </build>
