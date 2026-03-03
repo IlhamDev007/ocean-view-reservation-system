@@ -2,19 +2,16 @@ package com.oceanview.service;
 
 import com.oceanview.dao.UserDAO;
 import com.oceanview.model.User;
-import com.oceanview.util.PasswordUtil;
 
 public class AuthService {
 
-    public User authenticate(String username, String password) {
-        // Use UserDAO to check the user in the database
-        UserDAO userDAO = new UserDAO();
-        User user = userDAO.getUserByUsername(username);
+    private final UserDAO userDAO = new UserDAO();
 
-        if (user != null && PasswordUtil.verifyPassword(password, user.getPassword())) {
-            return user; // Return user if credentials are valid
-        } else {
-            return null; // Invalid credentials
-        }
+    public User login(String username, String password) throws Exception {
+        // basic validation (server-side)
+        if (username == null || username.trim().isEmpty()) return null;
+        if (password == null || password.trim().isEmpty()) return null;
+
+        return userDAO.findByUsernameAndPassword(username.trim(), password.trim());
     }
 }

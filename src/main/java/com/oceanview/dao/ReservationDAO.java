@@ -3,132 +3,180 @@ package com.oceanview.dao;
 import com.oceanview.model.Reservation;
 import com.oceanview.util.DBConnection;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ReservationDAO {
 
-    // Create a new reservation in the database
-    public boolean createReservation(Reservation reservation) {
-        String query = "INSERT INTO reservations (guest_name, guest_address, guest_contact_number, room_id, check_in, check_out, status, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+    // =========================
+    // DASHBOARD: COUNT ALL
+    // =========================
+    public int countAll() throws Exception {
+        String sql = "SELECT COUNT(*) FROM reservations";
 
-            stmt.setString(1, reservation.getGuestName());
-            stmt.setString(2, reservation.getGuestAddress());
-            stmt.setString(3, reservation.getGuestContactNumber());
-            stmt.setInt(4, reservation.getRoomId());
-            stmt.setDate(5, new java.sql.Date(reservation.getCheckIn().getTime()));
-            stmt.setDate(6, new java.sql.Date(reservation.getCheckOut().getTime()));
-            stmt.setString(7, reservation.getStatus().toString());
-            stmt.setDouble(8, reservation.getTotalAmount());
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+            rs.next();
+            return rs.getInt(1);
         }
     }
 
-    // Update an existing reservation
-    public boolean updateReservation(Reservation reservation) {
-        String query = "UPDATE reservations SET guest_name = ?, guest_address = ?, guest_contact_number = ?, room_id = ?, check_in = ?, check_out = ?, status = ?, total_amount = ? WHERE reservation_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+    // =========================
+    // INSERT (Add Reservation)
+    // =========================
+    public int insert(Reservation r) throws Exception {
+        String sql = "INSERT INTO reservations " +
+                "(guest_name, guest_address, contact_number, room_type, check_in_date, check_out_date) " +
+                "VALUES (?,?,?,?,?,?)";
 
-            stmt.setString(1, reservation.getGuestName());
-            stmt.setString(2, reservation.getGuestAddress());
-            stmt.setString(3, reservation.getGuestContactNumber());
-            stmt.setInt(4, reservation.getRoomId());
-            stmt.setDate(5, new java.sql.Date(reservation.getCheckIn().getTime()));
-            stmt.setDate(6, new java.sql.Date(reservation.getCheckOut().getTime()));
-            stmt.setString(7, reservation.getStatus().toString());
-            stmt.setDouble(8, reservation.getTotalAmount());
-            stmt.setInt(9, reservation.getReservationId());
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+            ps.setString(1, r.getGuestName());
+            ps.setString(2, r.getGuestAddress());
+            ps.setString(3, r.getContactNumber());
+            ps.setString(4, r.getRoomType());
+            ps.setDate(5, r.getCheckInDate());
+            ps.setDate(6, r.getCheckOutDate());
 
-    // Cancel a reservation
-    public boolean cancelReservation(int reservationId) {
-        String query = "UPDATE reservations SET status = 'CANCELLED' WHERE reservation_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+            int rows = ps.executeUpdate();
+            if (rows == 0) return -1;
 
-            stmt.setInt(1, reservationId);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    // Get a reservation by ID
-    public Reservation getReservationById(int reservationId) {
-        String query = "SELECT * FROM reservations WHERE reservation_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setInt(1, reservationId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Reservation reservation = new Reservation();
-                reservation.setReservationId(rs.getInt("reservation_id"));
-                reservation.setGuestName(rs.getString("guest_name"));
-                reservation.setGuestAddress(rs.getString("guest_address"));
-                reservation.setGuestContactNumber(rs.getString("guest_contact_number"));
-                reservation.setRoomId(rs.getInt("room_id"));
-                reservation.setCheckIn(rs.getDate("check_in"));
-                reservation.setCheckOut(rs.getDate("check_out"));
-                reservation.setStatus(rs.getString("status"));
-                reservation.setTotalAmount(rs.getDouble("total_amount"));
-                return reservation;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+            return -1;
         }
-        return null;
     }
 
-    // Get all reservations with optional filtering
-    public List<Reservation> getAllReservations(String filter, String filterValue) {
-        List<Reservation> reservations = new ArrayList<>();
-        String query = "SELECT * FROM reservations";
+    // =========================
+    // FIND BY ID (View details)
+    // =========================
+    public Reservation findById(int id) throws Exception {
+        String sql = "SELECT reservation_id, guest_name, guest_address, contact_number, room_type, " +
+                "check_in_date, check_out_date " +
+                "FROM reservations WHERE reservation_id=?";
 
-        if (filter != null && filterValue != null) {
-            query += " WHERE " + filter + " LIKE ?";
-        }
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+            ps.setInt(1, id);
 
-            if (filter != null && filterValue != null) {
-                stmt.setString(1, "%" + filterValue + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapRow(rs);
+                return null;
             }
+        }
+    }
 
-            ResultSet rs = stmt.executeQuery();
+    // =========================
+    // FIND ALL (View all / Manage)
+    // =========================
+    public List<Reservation> findAll() throws Exception {
+        String sql = "SELECT reservation_id, guest_name, guest_address, contact_number, room_type, " +
+                "check_in_date, check_out_date " +
+                "FROM reservations ORDER BY reservation_id DESC";
+
+        List<Reservation> list = new ArrayList<>();
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
             while (rs.next()) {
-                Reservation reservation = new Reservation();
-                reservation.setReservationId(rs.getInt("reservation_id"));
-                reservation.setGuestName(rs.getString("guest_name"));
-                reservation.setGuestAddress(rs.getString("guest_address"));
-                reservation.setGuestContactNumber(rs.getString("guest_contact_number"));
-                reservation.setRoomId(rs.getInt("room_id"));
-                reservation.setCheckIn(rs.getDate("check_in"));
-                reservation.setCheckOut(rs.getDate("check_out"));
-                reservation.setStatus(rs.getString("status"));
-                reservation.setTotalAmount(rs.getDouble("total_amount"));
-                reservations.add(reservation);
+                list.add(mapRow(rs));
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return reservations;
+
+        return list;
+    }
+
+    // =========================
+    // SEARCH (keyword search across columns)
+    // =========================
+    public List<Reservation> search(String keyword) throws Exception {
+        String like = "%" + keyword + "%";
+
+        String sql = "SELECT reservation_id, guest_name, guest_address, contact_number, room_type, " +
+                "check_in_date, check_out_date " +
+                "FROM reservations " +
+                "WHERE guest_name LIKE ? OR guest_address LIKE ? OR contact_number LIKE ? OR room_type LIKE ? " +
+                "ORDER BY reservation_id DESC";
+
+        List<Reservation> list = new ArrayList<>();
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, like);
+            ps.setString(2, like);
+            ps.setString(3, like);
+            ps.setString(4, like);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        }
+
+        return list;
+    }
+
+    // =========================
+    // UPDATE (Edit reservation)
+    // =========================
+    public boolean update(Reservation r) throws Exception {
+        String sql = "UPDATE reservations SET guest_name=?, guest_address=?, contact_number=?, room_type=?, " +
+                "check_in_date=?, check_out_date=? WHERE reservation_id=?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, r.getGuestName());
+            ps.setString(2, r.getGuestAddress());
+            ps.setString(3, r.getContactNumber());
+            ps.setString(4, r.getRoomType());
+            ps.setDate(5, r.getCheckInDate());
+            ps.setDate(6, r.getCheckOutDate());
+            ps.setInt(7, r.getReservationId());
+
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================
+    // DELETE
+    // =========================
+    public boolean deleteById(int id) throws Exception {
+        String sql = "DELETE FROM reservations WHERE reservation_id=?";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    // =========================
+    // Row mapper (ResultSet -> Reservation)
+    // =========================
+    private Reservation mapRow(ResultSet rs) throws Exception {
+        Reservation r = new Reservation();
+        r.setReservationId(rs.getInt("reservation_id"));
+        r.setGuestName(rs.getString("guest_name"));
+        r.setGuestAddress(rs.getString("guest_address"));
+        r.setContactNumber(rs.getString("contact_number"));
+        r.setRoomType(rs.getString("room_type"));
+        r.setCheckInDate(rs.getDate("check_in_date"));
+        r.setCheckOutDate(rs.getDate("check_out_date"));
+        return r;
     }
 }

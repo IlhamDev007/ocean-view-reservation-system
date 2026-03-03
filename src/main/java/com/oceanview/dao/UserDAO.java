@@ -3,29 +3,31 @@ package com.oceanview.dao;
 import com.oceanview.model.User;
 import com.oceanview.util.DBConnection;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class UserDAO {
 
-    public User getUserByUsername(String username) {
-        String query = "SELECT * FROM users WHERE username = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+    public User findByUsernameAndPassword(String username, String password) throws Exception {
+        String sql = "SELECT id, username, password FROM users WHERE username=? AND password=?";
 
-            stmt.setString(1, username);
-            ResultSet rs = stmt.executeQuery();
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-            if (rs.next()) {
-                User user = new User();
-                user.setUserId(rs.getInt("user_id"));
-                user.setUsername(rs.getString("username"));
-                user.setPassword(rs.getString("password"));
-                user.setRole(rs.getString("role"));
-                return user; // Return user if found
+            ps.setString(1, username);
+            ps.setString(2, password);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new User(
+                            rs.getInt("id"),
+                            rs.getString("username"),
+                            rs.getString("password")
+                    );
+                }
+                return null;
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return null; // Return null if no user is found
     }
 }
