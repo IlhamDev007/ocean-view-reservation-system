@@ -131,8 +131,8 @@ public class ReservationService {
         if (isBlank(r.getRoomType())) throw new IllegalArgumentException("Room type is required");
 
         String contact = r.getContactNumber().trim();
-        if (!contact.matches("\\d{7,15}")) {
-            throw new IllegalArgumentException("Contact number must be 7 to 15 digits");
+        if (!contact.matches("\\d{10}")) {
+            throw new IllegalArgumentException("Contact number must be 10 digits");
         }
 
         Date in = r.getCheckInDate();
